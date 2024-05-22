@@ -1,11 +1,15 @@
 package mg.itu.framework.utils;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 
-/**
- * ControlUtils
- */
+import mg.itu.framework.annotation.Controller;
+import mg.itu.framework.annotation.GET;
+import mg.itu.framework.objects.Mapping;
+
+/*Ensemble de méthodes utiles pour les controllers */
 public class ControlUtils {
     //Fonction permettant de recuperer toutes les classes contenues directement dans un package
     public ArrayList<Class<?>> scanPackage(String packageName){
@@ -38,6 +42,44 @@ public class ControlUtils {
         }
 
         /*Return */
+        return toReturn;
+    }
+
+    public ArrayList<Class<?>> getControllerList(String packageName){
+        /*Recherche de controllers - Sprint1
+        Scan et mise en place dans un attribut des valeurs */
+        ArrayList<Class<?>> controllers=new ArrayList<Class<?>>();
+        ArrayList<Class<?>> toAnalyse=scanPackage(packageName);
+        for (Class<?> class1 : toAnalyse) {
+            if(class1.isAnnotationPresent(Controller.class)) controllers.add(class1);
+        }
+
+        return controllers;
+    }
+
+    public HashMap<String,Mapping> getRoutes(String packageName){
+        /*Initialisationd de la variable à retourner */
+        HashMap<String,Mapping> toReturn=new HashMap<String,Mapping>();
+
+        /*On récupère tous les controllers dont on doit analyser les méthodes */
+        ArrayList<Class<?>> toSearchInto= getControllerList(packageName);
+
+        for (Class<?> class1 : toSearchInto) {
+            /*On prend toutes les méthodes du controller actuel */
+            Method[] lsMethods=class1.getDeclaredMethods();
+
+            for (Method meth : lsMethods) {
+                /*Récupérer l'annotation GET sur la méthode */
+                GET annot=meth.getAnnotation(GET.class);
+
+                /*Si l'annotation est présente */
+                if(annot!=null){
+                    Mapping map=new Mapping(class1.getName(), meth.getName());
+                    toReturn.put(annot.urlPattern(), map);
+                }    
+            }
+        }
+
         return toReturn;
     }
 }
