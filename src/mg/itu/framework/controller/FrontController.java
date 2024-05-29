@@ -58,7 +58,12 @@ public class FrontController extends HttpServlet{
         Si la clé est associée à un mapping est trouvé */
         if(routeHashMap.containsKey(key)){
             Mapping found=routeHashMap.get(key);
-            out.println("La méthode associée à "+key+" est "+found.getClassName()+"."+found.getMethodName()+"()");
+            // out.println("La méthode associée à "+key+" est "+found.getClassName()+"."+found.getMethodName()+"()");
+            try {
+                out.println(found.execute().toString());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         /*Sinon */
         else{
