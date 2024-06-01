@@ -46,7 +46,7 @@ public class FrontController extends HttpServlet{
     protected void processRequest(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         /*Affichage de l'URL -Sprint 0 */
         PrintWriter out = resp.getWriter();
-        out.println("Page : "+req.getRequestURL());
+        // out.println("Page : "+req.getRequestURL());
 
         /*Résultat de la recherche de la méthode
         On récupère la requête en tant qu'URI pour faciliter la récupération du path */
@@ -55,15 +55,11 @@ public class FrontController extends HttpServlet{
         key=key.substring(key.indexOf("/", 1));
 
         /*Recherche du mapping associé au path
-        Si la clé est associée à un mapping est trouvé */
+        Si la clé est associée à un mapping */
         if(routeHashMap.containsKey(key)){
             Mapping found=routeHashMap.get(key);
-            // out.println("La méthode associée à "+key+" est "+found.getClassName()+"."+found.getMethodName()+"()");
-            try {
-                out.println(found.execute().toString());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+
+            found.execute(req, resp);
         }
         /*Sinon */
         else{
