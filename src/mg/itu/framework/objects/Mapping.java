@@ -1,5 +1,11 @@
 package mg.itu.framework.objects;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import mg.itu.framework.utils.Reflect;
 
 /*Classe pour sauvegarder le nom d'une classe et d'une méthode  */
@@ -27,10 +33,32 @@ public class Mapping {
         this.methodName = methodName;
     }
 
-    public Object execute() throws Exception{
-        Class<?> class1= Class.forName(className);
-        Object caller= class1.getConstructor().newInstance();
+    /*Fonction appelee si quelqu'un entre l'URL */
+    public void execute(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException{
+        PrintWriter out=resp.getWriter();
+        try{
+            Class<?> class1= Class.forName(className);
+            Object caller= class1.getConstructor().newInstance();
+            
+            Object result=Reflect.execMeth(caller, methodName, null, null);
+
+            if(!(result instanceof String || result instanceof ModelView)){
+                out.println("La methode doit retourner soit un modele valide soit un String");
+                return;
+            }
+            else{
+                try{
+                    ModelView mv = (ModelView)result;
+                    mv.dispatchRequest(req, resp);
+                }
+                catch(ClassCastException e){
+                    out.println(result.toString());
+                }
+            }
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
         
-        return Reflect.execMeth(caller, methodName, null, null);
     }
 }
