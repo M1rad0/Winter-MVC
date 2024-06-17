@@ -8,17 +8,27 @@ import java.util.HashMap;
 import mg.itu.framework.annotation.Controller;
 import mg.itu.framework.annotation.GET;
 import mg.itu.framework.objects.Mapping;
+import mg.itu.framework.utils.errors.EmptyPackageException;
+import mg.itu.framework.utils.errors.NoControllerException;
+import mg.itu.framework.utils.errors.NoPackageException;
+import mg.itu.framework.utils.errors.SameURLException;
 
 /*Ensemble de méthodes utiles pour les controllers */
 public class ControlUtils {
     //Fonction permettant de recuperer toutes les classes contenues directement dans un package
-    public ArrayList<Class<?>> scanPackage(String packageName){
+    public ArrayList<Class<?>> scanPackage(String packageName) throws NoPackageException,EmptyPackageException{
         /*Initialisation de l'ArrayList */
         ArrayList<Class<?>> toReturn=new ArrayList<Class<?>>();
         
         packageName=packageName.replaceAll("\\.","/");
-        File baseFile=new File(getClass().getClassLoader().getResource(packageName).getFile());
-
+        File baseFile=null;
+        try{
+            baseFile=new File(getClass().getClassLoader().getResource(packageName).getFile());
+        }
+        catch(NullPointerException e){
+            throw new NoPackageException();
+        }
+    
         File[] allClasses=baseFile.listFiles();
 
         for (File file : allClasses) {
@@ -36,16 +46,19 @@ public class ControlUtils {
 
             /*Dans le cas où un fichier qui n'est pas un .class se trouve dans le package */
             catch(ClassNotFoundException e){
-                System.out.println(className+" n'est pas une classe.");
                 continue;
             }
+        }
+
+        if(toReturn.size()==0){
+            throw new EmptyPackageException(packageName);
         }
 
         /*Return */
         return toReturn;
     }
 
-    public ArrayList<Class<?>> getControllerList(String packageName){
+    public ArrayList<Class<?>> getControllerList(String packageName) throws NoPackageException,EmptyPackageException,NoControllerException{
         /*Recherche de controllers - Sprint1
         Scan et mise en place dans un attribut des valeurs */
         ArrayList<Class<?>> controllers=new ArrayList<Class<?>>();
@@ -54,10 +67,14 @@ public class ControlUtils {
             if(class1.isAnnotationPresent(Controller.class)) controllers.add(class1);
         }
 
+        if(controllers.size()==0){
+            throw new NoControllerException(packageName);
+        }
+
         return controllers;
     }
 
-    public HashMap<String,Mapping> getRoutes(String packageName){
+    public HashMap<String,Mapping> getRoutes(String packageName) throws NoPackageException,EmptyPackageException,NoControllerException,SameURLException{
         /*Initialisationd de la variable à retourner */
         HashMap<String,Mapping> toReturn=new HashMap<String,Mapping>();
 
@@ -75,8 +92,15 @@ public class ControlUtils {
                 /*Si l'annotation est présente */
                 if(annot!=null){
                     Mapping map=new Mapping(class1.getName(), meth.getName());
-                    toReturn.put(annot.urlPattern(), map);
-                }    
+                    String url=annot.urlPattern();
+
+                    if(toReturn.get(url)!=null){
+                        Mapping other=toReturn.get(url);
+                        throw new SameURLException(map, other);
+                    }
+
+                    toReturn.put(url, map);
+                }
             }
         }
 

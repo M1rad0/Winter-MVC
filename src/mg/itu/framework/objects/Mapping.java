@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mg.itu.framework.utils.Reflect;
+import mg.itu.framework.utils.errors.BadReturnTypeException;
 
 /*Classe pour sauvegarder le nom d'une classe et d'une méthode  */
 public class Mapping {
@@ -34,31 +35,23 @@ public class Mapping {
     }
 
     /*Fonction appelee si quelqu'un entre l'URL */
-    public void execute(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException{
+    public void execute(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException, BadReturnTypeException,Exception{
         PrintWriter out=resp.getWriter();
-        try{
-            Class<?> class1= Class.forName(className);
-            Object caller= class1.getConstructor().newInstance();
-            
-            Object result=Reflect.execMeth(caller, methodName, null, null);
-
-            if(!(result instanceof String || result instanceof ModelView)){
-                out.println("La methode doit retourner soit un modele valide soit un String");
-                return;
-            }
-            else{
-                try{
-                    ModelView mv = (ModelView)result;
-                    mv.dispatchRequest(req, resp);
-                }
-                catch(ClassCastException e){
-                    out.println(result.toString());
-                }
-            }
-        }
-        catch(Exception e){
-            e.printStackTrace();
-        }
+        Class<?> class1= Class.forName(className);
+        Object caller= class1.getConstructor().newInstance();
         
+        Object result=Reflect.execMeth(caller, methodName, null, null);
+
+        if(result instanceof String){
+            out.println(result.toString());
+        }
+        else if(result instanceof ModelView){
+            ModelView mv = (ModelView)result;
+            mv.dispatchRequest(req, resp);
+        }
+        else{
+            throw new BadReturnTypeException();
+        }   
+    
     }
 }
