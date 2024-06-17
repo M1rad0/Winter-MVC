@@ -1,7 +1,6 @@
 package mg.itu.framework.controller;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.URI;
 import java.util.HashMap;
 
@@ -23,14 +22,18 @@ public class FrontController extends HttpServlet{
         initVariables();
     }
 
-    public void initVariables(){
+    public void initVariables() throws ServletException{
         ControlUtils instUtils=new ControlUtils();
 
         /*Recherche de controllers - Sprint2
         Récupération du nom du package qui contiendra tous les controllers */
         String packageName=getInitParameter("controllerspackage");
-
-        this.routeHashMap=instUtils.getRoutes(packageName);
+        try{
+            this.routeHashMap=instUtils.getRoutes(packageName);
+        }
+        catch(Exception e){
+            throw new ServletException(e);
+        }
     }
 
     @Override
@@ -44,10 +47,6 @@ public class FrontController extends HttpServlet{
     }
 
     protected void processRequest(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        /*Affichage de l'URL -Sprint 0 */
-        PrintWriter out = resp.getWriter();
-        // out.println("Page : "+req.getRequestURL());
-
         /*Résultat de la recherche de la méthode
         On récupère la requête en tant qu'URI pour faciliter la récupération du path */
         URI requestURI=URI.create(req.getRequestURI());
@@ -58,12 +57,17 @@ public class FrontController extends HttpServlet{
         Si la clé est associée à un mapping */
         if(routeHashMap.containsKey(key)){
             Mapping found=routeHashMap.get(key);
-
-            found.execute(req, resp);
+            try{
+                found.execute(req, resp);
+            }
+            catch(Exception e){
+                throw new ServletException(e);
+            }
         }
         /*Sinon */
         else{
-            out.println("Ce lien n'est associé à aucune méthode");
+            resp.sendError(404);
+            throw new ServletException("Ce lien n'est associé à aucune méthode");
         }
     }
 }
