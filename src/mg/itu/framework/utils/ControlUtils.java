@@ -91,7 +91,7 @@ public class ControlUtils {
 
                 /*Si l'annotation est présente */
                 if(annot!=null){
-                    Mapping map=new Mapping(class1.getName(), meth.getName());
+                    Mapping map=new Mapping(meth);
                     String url=annot.urlPattern();
 
                     if(toReturn.get(url)!=null){

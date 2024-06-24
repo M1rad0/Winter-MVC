@@ -1,46 +1,70 @@
 package mg.itu.framework.objects;
 
-import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import mg.itu.framework.utils.Reflect;
+import mg.itu.framework.annotation.ParamName;
+import mg.itu.framework.utils.ParametersUtil;
 import mg.itu.framework.utils.errors.BadReturnTypeException;
+import mg.itu.framework.utils.errors.RequiredParameterException;
 
 /*Classe pour sauvegarder le nom d'une classe et d'une méthode  */
 public class Mapping {
-    String className;
-    String methodName;
+    Method toExecute;
 
-    /*Getters et setters */
+    public Method getToExecute() {
+        return toExecute;
+    }
+    public void setToExecute(Method toExecute) {
+        this.toExecute = toExecute;
+    }
+
     public String getClassName() {
-        return className;
+        return getToExecute().getDeclaringClass().getSimpleName();
     }
-    public void setClassName(String className) {
-        this.className = className;
-    }
-    public String getMethodName() {
-        return methodName;
-    }
-    public void setMethodName(String methodName) {
-        this.methodName = methodName;
+    public String getMethodName(){
+        return getToExecute().getName();
     }
 
     /*Constructeur */
-    public Mapping(String className, String methodName) {
-        this.className = className;
-        this.methodName = methodName;
+    public Mapping(Method toExecute) {
+        this.toExecute=toExecute;
+    }
+
+    /*Récupère les arguments contenus dans la requête pour les utiliser avec la fonction */
+    public Object[] buildArgs(HttpServletRequest req) throws Exception{
+        Parameter[] parameters=toExecute.getParameters();
+        Object[] args=new Object[parameters.length];
+        int i=0;
+        for(Parameter param : parameters) {
+            String name=param.getName();
+            ParamName annotation=param.getAnnotation(ParamName.class);
+
+            if(annotation!=null){
+                name=annotation.name();
+            }
+            String strValue=req.getParameter(name);
+            if(strValue==null){
+                throw new RequiredParameterException(name);
+            }
+
+            args[i]=ParametersUtil.castString(req.getParameter(name), param.getType());
+        }
+        return args;
     }
 
     /*Fonction appelee si quelqu'un entre l'URL */
-    public void execute(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException, BadReturnTypeException,Exception{
+    public void execute(HttpServletRequest req, HttpServletResponse resp) throws Exception{
         PrintWriter out=resp.getWriter();
-        Class<?> class1= Class.forName(className);
+        Class<?> class1= toExecute.getDeclaringClass();
         Object caller= class1.getConstructor().newInstance();
-        
-        Object result=Reflect.execMeth(caller, methodName, null, null);
+
+        Object[] args= buildArgs(req);
+
+        Object result=toExecute.invoke(caller, args);
 
         if(result instanceof String){
             out.println(result.toString());
@@ -53,5 +77,13 @@ public class Mapping {
             throw new BadReturnTypeException();
         }   
     
+    }
+
+    public static void main(String[] args) {
+        Method togetParam=Mapping.class.getDeclaredMethods()[0];
+
+        for (Parameter param : togetParam.getParameters()) {
+            System.err.println(param.getName());
+        }
     }
 }

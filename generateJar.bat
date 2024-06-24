@@ -4,7 +4,7 @@ call .\findJavaSrc
 set src=
 for /f "delims=" %%i in (%nomSrcTxt%) do set src=%src% %%i
 
-javac -cp "%lib%\*" -d ".." %src%
+javac -parameters -cp "%lib%\*" -d ".." %src%
 
 jar --create --file ..\winter.jar ..\mg
 
