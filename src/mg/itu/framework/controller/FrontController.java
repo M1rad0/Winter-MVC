@@ -52,6 +52,9 @@ public class FrontController extends HttpServlet{
         URI requestURI=URI.create(req.getRequestURI());
         String key=requestURI.getPath();
         key=key.substring(key.indexOf("/", 1));
+        
+        /*On enlève ce qu'il y a derrière l'url en cas de get */
+        key=key.split("\\?")[0];
 
         /*Recherche du mapping associé au path
         Si la clé est associée à un mapping */
