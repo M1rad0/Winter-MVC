@@ -42,7 +42,7 @@ public class ParametersUtil {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
             return LocalDateTime.parse(value, formatter);
         } else {
-            throw new IllegalArgumentException("Unknown target type: " + targetType);
+            throw new IllegalArgumentException("Si vous utlisez une classe personnalisée, veuillez marquer le paramètre avec l'annotation ParamWrapper");
         }
     }
 }
