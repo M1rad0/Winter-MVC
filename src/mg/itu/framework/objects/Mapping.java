@@ -1,13 +1,17 @@
 package mg.itu.framework.objects;
 
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import mg.itu.framework.annotation.ParamEquivalent;
 import mg.itu.framework.annotation.ParamName;
+import mg.itu.framework.annotation.ParamWrapper;
 import mg.itu.framework.utils.ParametersUtil;
+import mg.itu.framework.utils.Reflect;
 import mg.itu.framework.utils.errors.BadReturnTypeException;
 import mg.itu.framework.utils.errors.RequiredParameterException;
 
@@ -40,18 +44,63 @@ public class Mapping {
         Object[] args=new Object[parameters.length];
         int i=0;
         for(Parameter param : parameters) {
+            /*Récupération du nom par défaut du paramètre */
             String name=param.getName();
-            ParamName annotation=param.getAnnotation(ParamName.class);
 
-            if(annotation!=null){
-                name=annotation.name();
-            }
-            String strValue=req.getParameter(name);
-            if(strValue==null){
-                throw new RequiredParameterException(name);
+            /*Code pour les objets */
+            if(param.isAnnotationPresent(ParamWrapper.class)){
+                /*Verifier si il s'agit d'un ParamWrapper et récupérer l'annotation*/
+                ParamWrapper annotation= param.getAnnotation(ParamWrapper.class);
+
+                /*Récupération du nom indiqué dans l'annotation */
+                if(annotation!=null && !annotation.name().equals("")){
+                    name=annotation.name();
+                }
+
+                Object result=param.getType().getConstructor().newInstance();
+                Field[] classFields=param.getType().getDeclaredFields();
+
+                /*Set progressif des différentes valeurs */
+                for (Field field : classFields) {
+                    String fieldName=field.getName();
+
+                    ParamEquivalent fieldAnnot=field.getAnnotation(ParamEquivalent.class);
+                    if(fieldAnnot!=null && !fieldAnnot.name().equals("")){
+                        fieldName=fieldAnnot.name();
+                    }
+                    String fullName=name+"."+fieldName;
+                    String strValue=req.getParameter(fullName);
+
+                    /*Vérification du cas où il manquerait un des paramètres obligatoires */
+                    if(strValue==null){
+                        throw new RequiredParameterException(name+"."+fieldName);
+                    }
+
+                    Object toSet=ParametersUtil.castString(strValue, field.getType());
+
+                    Reflect.set(result,field.getName(),toSet,field.getType());
+                }
+
+                /*Le prochain argument est l'objet obtenu*/
+                args[i]=result;
             }
 
-            args[i]=ParametersUtil.castString(req.getParameter(name), param.getType());
+            /*Code pour les "Types de base" */
+            else{
+                ParamName annotation=param.getAnnotation(ParamName.class);
+                if(annotation!=null && !annotation.name().equals("")){
+                    name=annotation.name();
+                }
+
+                String strValue=req.getParameter(name);
+                if(strValue==null){
+                    throw new RequiredParameterException(name);
+                }
+
+                /*Le prochain argument est le résultat du cast vers le type du paramètre*/
+                args[i]=ParametersUtil.castString(strValue, param.getType());    
+            }
+            i++;
         }
         return args;
     }
