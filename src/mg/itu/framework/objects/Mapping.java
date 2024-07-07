@@ -44,8 +44,18 @@ public class Mapping {
         Object[] args=new Object[parameters.length];
         int i=0;
         for(Parameter param : parameters) {
+            /*Si le parametre est un MySession */
+            if (param.getType().equals(MySession.class)){
+                args[i]=new MySession(req.getSession());
+                continue;
+            }
+
             /*Récupération du nom par défaut du paramètre */
             String name=param.getName();
+
+            if(!param.isAnnotationPresent(ParamWrapper.class) && !param.isAnnotationPresent(ParamName.class)){
+                throw new Exception("ETU2741"+"L'argument "+name+" n'est pas annoté.");
+            }
 
             /*Code pour les objets */
             if(param.isAnnotationPresent(ParamWrapper.class)){
@@ -110,6 +120,10 @@ public class Mapping {
         PrintWriter out=resp.getWriter();
         Class<?> class1= toExecute.getDeclaringClass();
         Object caller= class1.getConstructor().newInstance();
+
+        for (Field field : class1.getDeclaredFields()) {
+            if(field.getType()==MySession.class) Reflect.set(caller, field.getName(), new MySession(req.getSession()), field.getType());
+        } 
 
         Object[] args= buildArgs(req);
 

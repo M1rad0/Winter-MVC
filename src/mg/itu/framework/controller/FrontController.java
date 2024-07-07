@@ -64,7 +64,8 @@ public class FrontController extends HttpServlet{
                 found.execute(req, resp);
             }
             catch(Exception e){
-                throw new ServletException(e);
+                // throw new ServletException(e);
+                e.printStackTrace(resp.getWriter());
             }
         }
         /*Sinon */
