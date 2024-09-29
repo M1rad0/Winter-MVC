@@ -17,3 +17,8 @@ Utilisation MVC
     MODELVIEW
         - Il s'agit d'un objet qu'on construit avec un URL qui représente la view et dans lequel on peut stocker des objets qui seront des attributs de requête.
         - Utiliser la fonction addObject(key,value) pour ajouter un attribut à la requête qui sera utilisable dans le view
+
+Utilisation RestApi JSON
+    Même processus que pour le MVC mais:
+    - Chaque controller devra être annoté "RestApi"
+    - Le controleur peut retourner n'importe quelle valeur qui sera ensuite retournée en JSON
