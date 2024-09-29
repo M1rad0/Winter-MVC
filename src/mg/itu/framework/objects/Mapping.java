@@ -5,11 +5,14 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
+import com.google.gson.Gson;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mg.itu.framework.annotation.ParamEquivalent;
 import mg.itu.framework.annotation.ParamName;
 import mg.itu.framework.annotation.ParamWrapper;
+import mg.itu.framework.annotation.RestApi;
 import mg.itu.framework.utils.ParametersUtil;
 import mg.itu.framework.utils.Reflect;
 import mg.itu.framework.utils.errors.BadReturnTypeException;
@@ -129,6 +132,22 @@ public class Mapping {
 
         Object result=toExecute.invoke(caller, args);
 
+        /*Cas d'un rest api */
+        if(toExecute.isAnnotationPresent(RestApi.class)){
+            Gson instG= new Gson();
+            String toPrint=null;
+            if(result instanceof ModelView){
+                toPrint=instG.toJson(((ModelView)result).getData());
+            }
+            else{
+                toPrint=instG.toJson(result);
+            }
+            resp.setContentType("application/json");
+            out.println(toPrint);
+            return;
+        }
+
+        /*Situation normale de MVC */
         if(result instanceof String){
             out.println(result.toString());
         }
