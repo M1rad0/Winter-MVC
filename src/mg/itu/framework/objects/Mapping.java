@@ -4,6 +4,7 @@ import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.Set;
 
 import com.google.gson.Gson;
 
@@ -17,32 +18,41 @@ import mg.itu.framework.utils.ParametersUtil;
 import mg.itu.framework.utils.Reflect;
 import mg.itu.framework.utils.errors.BadReturnTypeException;
 import mg.itu.framework.utils.errors.RequiredParameterException;
+import mg.itu.framework.utils.errors.VerbNotSupportedException;
 
 /*Classe pour sauvegarder le nom d'une classe et d'une méthode  */
 public class Mapping {
-    Method toExecute;
+    Set<VerbMethod> verbmethods;
 
-    public Method getToExecute() {
-        return toExecute;
-    }
-    public void setToExecute(Method toExecute) {
-        this.toExecute = toExecute;
+    public void setVerbmethods(Set<VerbMethod> verbmethods) {
+        this.verbmethods = verbmethods;
     }
 
-    public String getClassName() {
-        return getToExecute().getDeclaringClass().getSimpleName();
+    public Set<VerbMethod> getVerbmethods() {
+        return verbmethods;
     }
-    public String getMethodName(){
-        return getToExecute().getName();
+    
+    public Method getMethod(String verb) throws Exception{
+        for (VerbMethod verbMethod : verbmethods) {
+            if(verbMethod.getVerb().equals(verb)){
+                return verbMethod.getToExecute();
+            }
+        }
+        throw new VerbNotSupportedException(verb);
+    }
+
+    public boolean addMethodForVerb(String verb, Method method){
+        return verbmethods.add(new VerbMethod(verb, method));
     }
 
     /*Constructeur */
-    public Mapping(Method toExecute) {
-        this.toExecute=toExecute;
+    public Mapping(Set<VerbMethod> set) {
+        setVerbmethods(set);
     }
 
     /*Récupère les arguments contenus dans la requête pour les utiliser avec la fonction */
     public Object[] buildArgs(HttpServletRequest req) throws Exception{
+        Method toExecute=getMethod(req.getMethod());
         Parameter[] parameters=toExecute.getParameters();
         Object[] args=new Object[parameters.length];
         int i=0;
@@ -121,6 +131,7 @@ public class Mapping {
     /*Fonction appelee si quelqu'un entre l'URL */
     public void execute(HttpServletRequest req, HttpServletResponse resp) throws Exception{
         PrintWriter out=resp.getWriter();
+        Method toExecute=getMethod(req.getMethod());
         Class<?> class1= toExecute.getDeclaringClass();
         Object caller= class1.getConstructor().newInstance();
 

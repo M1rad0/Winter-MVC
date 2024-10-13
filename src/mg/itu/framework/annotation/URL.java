@@ -8,6 +8,6 @@ import java.lang.annotation.Target;
 /*Annotation qui servira à associer un url et une méthode */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface GET {
-    
+public @interface URL {
+    String urlPattern() default "";
 }

@@ -1,20 +1,26 @@
 package mg.itu.framework.utils;
 
 import java.io.File;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import mg.itu.framework.annotation.Controller;
-import mg.itu.framework.annotation.GET;
+import mg.itu.framework.annotation.URL;
 import mg.itu.framework.objects.Mapping;
+import mg.itu.framework.objects.VerbMethod;
+import mg.itu.framework.utils.errors.DoubleVerbException;
 import mg.itu.framework.utils.errors.EmptyPackageException;
+import mg.itu.framework.utils.errors.IncoherenceException;
 import mg.itu.framework.utils.errors.NoControllerException;
 import mg.itu.framework.utils.errors.NoPackageException;
-import mg.itu.framework.utils.errors.SameURLException;
 
 /*Ensemble de méthodes utiles pour les controllers */
 public class ControlUtils {
+    static String[] verbsList=new String[]{"GET","POST"};
+
     //Fonction permettant de recuperer toutes les classes contenues directement dans un package
     public ArrayList<Class<?>> scanPackage(String packageName) throws NoPackageException,EmptyPackageException{
         /*Initialisation de l'ArrayList */
@@ -74,7 +80,24 @@ public class ControlUtils {
         return controllers;
     }
 
-    public HashMap<String,Mapping> getRoutes(String packageName) throws NoPackageException,EmptyPackageException,NoControllerException,SameURLException{
+    /*SearchVerb si une method ne supporte qu'un verbe*/
+    @SuppressWarnings("unchecked")
+    static String searchVerb(Method meth) throws Exception{
+        int count=0;
+        String verb=null;
+
+        for (String string : verbsList) {
+            if(meth.isAnnotationPresent((Class<? extends Annotation>)Class.forName("mg.itu.framework.annotation."+string))){
+                count++;
+                verb=string;
+            }
+            if(count>1) throw new DoubleVerbException(meth);
+        }
+
+        return verb;
+    }
+
+    public HashMap<String,Mapping> getRoutes(String packageName) throws Exception{
         /*Initialisationd de la variable à retourner */
         HashMap<String,Mapping> toReturn=new HashMap<String,Mapping>();
 
@@ -86,20 +109,24 @@ public class ControlUtils {
             Method[] lsMethods=class1.getDeclaredMethods();
 
             for (Method meth : lsMethods) {
-                /*Récupérer l'annotation GET sur la méthode */
-                GET annot=meth.getAnnotation(GET.class);
+                /*Récupérer l'annotation URL sur la méthode */
+                URL annot=meth.getAnnotation(URL.class);
 
                 /*Si l'annotation est présente */
                 if(annot!=null){
-                    Mapping map=new Mapping(meth);
                     String url=annot.urlPattern();
-
+                    Mapping map=null;
                     if(toReturn.get(url)!=null){
-                        Mapping other=toReturn.get(url);
-                        throw new SameURLException(map, other);
+                        map=toReturn.get(url);
                     }
-
-                    toReturn.put(url, map);
+                    else{
+                        map=new Mapping(new HashSet<VerbMethod>());
+                        toReturn.put(url, map);
+                    }
+                    String verb=searchVerb(meth);
+                    if(!map.addMethodForVerb(verb, meth)){
+                        throw new IncoherenceException(verb);
+                    }
                 }
             }
         }
