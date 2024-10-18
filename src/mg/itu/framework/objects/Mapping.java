@@ -32,7 +32,7 @@ public class Mapping {
         return verbmethods;
     }
     
-    public Method getMethod(String verb) throws Exception{
+    public Method getMethod(String verb) throws VerbNotSupportedException{
         for (VerbMethod verbMethod : verbmethods) {
             if(verbMethod.getVerb().equals(verb)){
                 return verbMethod.getToExecute();
@@ -129,7 +129,7 @@ public class Mapping {
     }
 
     /*Fonction appelee si quelqu'un entre l'URL */
-    public void execute(HttpServletRequest req, HttpServletResponse resp) throws Exception{
+    public void execute(HttpServletRequest req, HttpServletResponse resp) throws VerbNotSupportedException,Exception{
         PrintWriter out=resp.getWriter();
         Method toExecute=getMethod(req.getMethod());
         Class<?> class1= toExecute.getDeclaringClass();

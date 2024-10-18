@@ -10,6 +10,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mg.itu.framework.objects.Mapping;
 import mg.itu.framework.utils.ControlUtils;
+import mg.itu.framework.utils.errors.NotFoundException;
+import mg.itu.framework.utils.errors.VerbNotSupportedException;
 
 /*Servlet gérant généralement toutes les requêtes clients entrantes */
 public class FrontController extends HttpServlet{
@@ -42,7 +44,7 @@ public class FrontController extends HttpServlet{
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException{
         processRequest(req, resp);
     }
 
@@ -58,20 +60,22 @@ public class FrontController extends HttpServlet{
 
         /*Recherche du mapping associé au path
         Si la clé est associée à un mapping */
-        if(routeHashMap.containsKey(key)){
-            Mapping found=routeHashMap.get(key);
-            try{
+        try{
+            if(routeHashMap.containsKey(key)){
+                Mapping found=routeHashMap.get(key);
                 found.execute(req, resp);
             }
-            catch(Exception e){
-                // throw new ServletException(e);
-                e.printStackTrace(resp.getWriter());
+            else{
+                throw new NotFoundException();
             }
         }
-        /*Sinon */
-        else{
-            resp.sendError(404);
-            throw new ServletException("Ce lien n'est associé à aucune méthode");
+        catch(VerbNotSupportedException | NotFoundException e){
+            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            resp.getWriter().write(e.getMessage());
+        }
+        catch(Exception e){
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.getWriter().write(e.getMessage());
         }
     }
 }
