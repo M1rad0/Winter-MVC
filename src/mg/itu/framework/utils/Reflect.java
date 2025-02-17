@@ -1,7 +1,11 @@
 package mg.itu.framework.utils;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Reflect {
     @SuppressWarnings("rawtypes")
@@ -43,5 +47,17 @@ public class Reflect {
 
         Method meth=obj.getClass().getDeclaredMethod(methName,type);
         meth.invoke(obj,value);
+    }
+
+    public static List<Annotation> getAllValidationAnnot(Parameter param){
+        List<Annotation> toReturn=new ArrayList<Annotation>();
+        Annotation[] allAnnot=param.getAnnotations();
+
+        for (Annotation annotation : allAnnot) {
+            if(annotation.getClass().isAnnotationPresent(null)){
+                toReturn.add(annotation);
+            }
+        }
+        return toReturn;
     }
 }

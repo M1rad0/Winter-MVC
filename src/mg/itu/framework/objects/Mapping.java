@@ -1,9 +1,12 @@
 package mg.itu.framework.objects;
 
 import java.io.PrintWriter;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.List;
 import java.util.Set;
 
 import com.google.gson.Gson;
@@ -14,11 +17,14 @@ import mg.itu.framework.annotation.ParamEquivalent;
 import mg.itu.framework.annotation.ParamName;
 import mg.itu.framework.annotation.ParamWrapper;
 import mg.itu.framework.annotation.RestApi;
+import mg.itu.framework.annotation.validation.Validation;
 import mg.itu.framework.utils.ParametersUtil;
 import mg.itu.framework.utils.Reflect;
 import mg.itu.framework.utils.errors.BadReturnTypeException;
 import mg.itu.framework.utils.errors.RequiredParameterException;
+import mg.itu.framework.utils.errors.ValidationException;
 import mg.itu.framework.utils.errors.VerbNotSupportedException;
+import mg.itu.framework.utils.validation.Validator;
 
 /*Classe pour sauvegarder le nom d'une classe et d'une méthode  */
 public class Mapping {
@@ -123,6 +129,32 @@ public class Mapping {
                 /*Le prochain argument est le résultat du cast vers le type du paramètre*/
                 args[i]=ParametersUtil.castString(strValue, param.getType());    
             }
+
+            /*Vérification des validations */
+            List<Annotation> validations=Reflect.getAllValidationAnnot(param);
+            for (Annotation annotation : validations) {
+                // Récupérer l'annotation Validation
+                Validation validationInfo = annotation.annotationType().getAnnotation(Validation.class);
+
+                if (validationInfo != null) {
+                    String className = validationInfo.linkedValidator();
+
+                    // Charger la classe du validateur
+                    Class<?> validatorClass = Class.forName(className);
+
+                    // Récupérer le constructeur prenant (Object, Annotation)
+                    Constructor<?> constructor = validatorClass.getConstructor(Object.class, String.class ,Annotation.class);
+
+                    // Créer une instance avec des valeurs par défaut
+                    Validator validatorInstance = (Validator)constructor.newInstance(args[i], name, annotation);
+                    
+                    /*Le throws Exception est set dans la fonction Validate pour l'instant*/
+                    if(!validatorInstance.validate()){
+                        throw new ValidationException(validatorInstance.getErrorMessage());
+                    }
+                }
+            }
+
             i++;
         }
         return args;
