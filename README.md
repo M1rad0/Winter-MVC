@@ -6,6 +6,7 @@ Installation et initialisation
         Declarer un servlet de réception de toutes les requêtes, instance de la classe mg.itu.framework.controller.FrontController
         (Son url pattern sera donc /)
         Choisir un package dans lequel on mettra tous les controllers. Son nom sera stocké dans un init-param dont le nom est controllerspackage associé au FrontController
+        Declarer un filtre mg.itu.framework.controller.LastRequestFilter pour récupérer la dernière requête
 
 Utilisation MVC
     - Pour chaque classe qui sera un controller, ajouter l'annotation annotation.Controller
