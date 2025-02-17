@@ -20,11 +20,13 @@ import mg.itu.framework.annotation.ParamEquivalent;
 import mg.itu.framework.annotation.ParamName;
 import mg.itu.framework.annotation.ParamWrapper;
 import mg.itu.framework.annotation.RestApi;
+import mg.itu.framework.annotation.authentification.Authentified;
 import mg.itu.framework.annotation.validation.Validation;
 import mg.itu.framework.utils.ParametersUtil;
 import mg.itu.framework.utils.Reflect;
 import mg.itu.framework.utils.errors.BadReturnTypeException;
 import mg.itu.framework.utils.errors.RequiredParameterException;
+import mg.itu.framework.utils.errors.UnauthorizedException;
 import mg.itu.framework.utils.errors.ValidationException;
 import mg.itu.framework.utils.errors.VerbNotSupportedException;
 import mg.itu.framework.utils.validation.Validator;
@@ -140,10 +142,8 @@ public class Mapping {
                 Validation validationInfo = annotation.annotationType().getAnnotation(Validation.class);
 
                 if (validationInfo != null) {
-                    String className = validationInfo.linkedValidator();
-
                     // Charger la classe du validateur
-                    Class<?> validatorClass = Class.forName(className);
+                    Class<?> validatorClass = validationInfo.linkedValidator();
 
                     // Récupérer le constructeur prenant (Object, Annotation)
                     Constructor<?> constructor = validatorClass.getConstructor(Object.class, String.class ,Annotation.class);
@@ -260,12 +260,45 @@ public class Mapping {
         return args;
     }    
     
+    public boolean verifyAuth(HttpServletRequest req,Method meth){
+        /*Pour la classe ou la méthode */
+        Authentified auth=null;
+        if(meth.getClass().isAnnotationPresent(Authentified.class)){
+            auth=meth.getClass().getAnnotation(Authentified.class);
+        }
+        else if(meth.isAnnotationPresent(Authentified.class)){
+            auth=meth.getAnnotation(Authentified.class);
+        }
+        
+        if(auth!=null){
+            Object sessionAuth=req.getSession().getAttribute("auth");
+            if(sessionAuth==null){
+                return false;
+            }
+            Class<?>[] authorized= auth.authorized();
+            if(authorized!=null && authorized.length>0){
+                for (Class<?> class1 : authorized) {
+                    if(class1==sessionAuth.getClass()){
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+        return true;
+    }
+
     /*Fonction appelee si quelqu'un entre l'URL */
     public void execute(HttpServletRequest req, HttpServletResponse resp) throws VerbNotSupportedException,Exception{
         PrintWriter out=resp.getWriter();
         Method toExecute=getMethod(req.getMethod());
         Class<?> class1= toExecute.getDeclaringClass();
         Object caller= class1.getConstructor().newInstance();
+
+        /*Vérifie si la personne est authentifiée et a le bon role */
+        if(!verifyAuth(req,toExecute)){
+            throw new UnauthorizedException("L'accès à cette méthode est non autorisée à l'individu actuel");
+        }
 
         for (Field field : class1.getDeclaredFields()) {
             if(field.getType()==MySession.class) Reflect.set(caller, field.getName(), new MySession(req.getSession()), field.getType());

@@ -10,5 +10,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Validation {
     /*Nom de la classe qui contient la fonction de validation */
-    String linkedValidator();
+    Class<?> linkedValidator();
 }
