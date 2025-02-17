@@ -13,6 +13,7 @@ import com.google.gson.Gson;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 import mg.itu.framework.annotation.ParamEquivalent;
 import mg.itu.framework.annotation.ParamName;
 import mg.itu.framework.annotation.ParamWrapper;
@@ -56,80 +57,78 @@ public class Mapping {
         setVerbmethods(set);
     }
 
-    /*Récupère les arguments contenus dans la requête pour les utiliser avec la fonction */
-    public Object[] buildArgs(HttpServletRequest req) throws Exception{
-        Method toExecute=getMethod(req.getMethod());
-        Parameter[] parameters=toExecute.getParameters();
-        Object[] args=new Object[parameters.length];
-        int i=0;
-        for(Parameter param : parameters) {
-            /*Si le parametre est un MySession */
-            if (param.getType().equals(MySession.class)){
-                args[i]=new MySession(req.getSession());
+    public Object[] buildArgs(HttpServletRequest req) throws Exception {
+        // Vérification si la requête est multipart
+        boolean isMultipart = req.getContentType() != null && req.getContentType().toLowerCase().contains("multipart/form-data");
+        
+        // Appel de la fonction appropriée
+        if (isMultipart) {
+            return buildArgsFromParts(req);
+        } else {
+            return buildArgsFromParameters(req);
+        }
+    }
+    
+    // Fonction pour traiter les paramètres standards
+    private Object[] buildArgsFromParameters(HttpServletRequest req) throws Exception {
+        Method toExecute = getMethod(req.getMethod());
+        Parameter[] parameters = toExecute.getParameters();
+        Object[] args = new Object[parameters.length];
+        int i = 0;
+    
+        for (Parameter param : parameters) {
+            // Gestion de MySession
+            if (param.getType().equals(MySession.class)) {
+                args[i++] = new MySession(req.getSession());
                 continue;
             }
-
-            /*Récupération du nom par défaut du paramètre */
-            String name=param.getName();
-
-            if(!param.isAnnotationPresent(ParamWrapper.class) && !param.isAnnotationPresent(ParamName.class)){
-                throw new Exception("ETU2741"+"L'argument "+name+" n'est pas annoté.");
+    
+            // Récupération du nom du paramètre
+            String name = param.getName();
+            if (!param.isAnnotationPresent(ParamWrapper.class) && !param.isAnnotationPresent(ParamName.class)) {
+                throw new Exception("ETU2741" + "L'argument " + name + " n'est pas annoté.");
             }
-
-            /*Code pour les objets */
-            if(param.isAnnotationPresent(ParamWrapper.class)){
-                /*Verifier si il s'agit d'un ParamWrapper et récupérer l'annotation*/
-                ParamWrapper annotation= param.getAnnotation(ParamWrapper.class);
-
-                /*Récupération du nom indiqué dans l'annotation */
-                if(annotation!=null && !annotation.name().equals("")){
-                    name=annotation.name();
+    
+            if (param.isAnnotationPresent(ParamWrapper.class)) {
+                ParamWrapper annotation = param.getAnnotation(ParamWrapper.class);
+                if (annotation != null && !annotation.name().equals("")) {
+                    name = annotation.name();
                 }
-
-                Object result=param.getType().getConstructor().newInstance();
-                Field[] classFields=param.getType().getDeclaredFields();
-
-                /*Set progressif des différentes valeurs */
+    
+                Object result = param.getType().getConstructor().newInstance();
+                Field[] classFields = param.getType().getDeclaredFields();
+    
                 for (Field field : classFields) {
-                    String fieldName=field.getName();
-
-                    ParamEquivalent fieldAnnot=field.getAnnotation(ParamEquivalent.class);
-                    if(fieldAnnot!=null && !fieldAnnot.name().equals("")){
-                        fieldName=fieldAnnot.name();
+                    String fieldName = field.getName();
+                    ParamEquivalent fieldAnnot = field.getAnnotation(ParamEquivalent.class);
+                    if (fieldAnnot != null && !fieldAnnot.name().equals("")) {
+                        fieldName = fieldAnnot.name();
                     }
-                    String fullName=name+"."+fieldName;
-                    String strValue=req.getParameter(fullName);
-
-                    /*Vérification du cas où il manquerait un des paramètres obligatoires */
-                    if(strValue==null){
-                        throw new RequiredParameterException(name+"."+fieldName);
+                    String fullName = name + "." + fieldName;
+                    String strValue = req.getParameter(fullName);
+    
+                    if (strValue == null) {
+                        throw new RequiredParameterException(name + "." + fieldName);
                     }
-
-                    Object toSet=ParametersUtil.castString(strValue, field.getType());
-
-                    Reflect.set(result,field.getName(),toSet,field.getType());
+    
+                    Object toSet = ParametersUtil.castString(strValue, field.getType());
+                    Reflect.set(result, field.getName(), toSet, field.getType());
                 }
-
-                /*Le prochain argument est l'objet obtenu*/
-                args[i]=result;
-            }
-
-            /*Code pour les "Types de base" */
-            else{
-                ParamName annotation=param.getAnnotation(ParamName.class);
-                if(annotation!=null && !annotation.name().equals("")){
-                    name=annotation.name();
+                args[i++] = result;
+            } else {
+                ParamName annotation = param.getAnnotation(ParamName.class);
+                if (annotation != null && !annotation.name().equals("")) {
+                    name = annotation.name();
                 }
-
-                String strValue=req.getParameter(name);
-                if(strValue==null){
+    
+                String strValue = req.getParameter(name);
+                if (strValue == null) {
                     throw new RequiredParameterException(name);
                 }
-
-                /*Le prochain argument est le résultat du cast vers le type du paramètre*/
-                args[i]=ParametersUtil.castString(strValue, param.getType());    
+    
+                args[i++] = ParametersUtil.castString(strValue, param.getType());
             }
-
+          
             /*Vérification des validations */
             List<Annotation> validations=Reflect.getAllValidationAnnot(param);
             for (Annotation annotation : validations) {
@@ -159,7 +158,95 @@ public class Mapping {
         }
         return args;
     }
-
+    
+    // Fonction pour traiter les parties multipart
+    private Object[] buildArgsFromParts(HttpServletRequest req) throws Exception {
+        Method toExecute = getMethod(req.getMethod());
+        Parameter[] parameters = toExecute.getParameters();
+        Object[] args = new Object[parameters.length];
+        int i = 0;
+    
+        for (Parameter param : parameters) {
+            // Gestion de MySession
+            if (param.getType().equals(MySession.class)) {
+                args[i++] = new MySession(req.getSession());
+                continue;
+            }
+    
+            // Gestion de MultiPartFile
+            if (param.getType().equals(MultiPartFile.class)) {
+                // Récupération de la partie correspondant au nom du paramètre
+                String name = param.getName();
+                if (param.isAnnotationPresent(ParamName.class)) {
+                    ParamName annotation = param.getAnnotation(ParamName.class);
+                    if (annotation != null && !annotation.name().equals("")) {
+                        name = annotation.name();
+                    }
+                }
+    
+                Part part = req.getPart(name);
+                if (part == null) {
+                    throw new RequiredParameterException(name);
+                }
+    
+                // Création d'une instance MultiPartFile
+                args[i++] = new MultiPartFile(part);
+                continue;
+            }
+    
+            // Récupération du nom du paramètre
+            String name = param.getName();
+            if (!param.isAnnotationPresent(ParamWrapper.class) && !param.isAnnotationPresent(ParamName.class)) {
+                throw new Exception("ETU2741" + "L'argument " + name + " n'est pas annoté.");
+            }
+    
+            if (param.isAnnotationPresent(ParamWrapper.class)) {
+                ParamWrapper annotation = param.getAnnotation(ParamWrapper.class);
+                if (annotation != null && !annotation.name().equals("")) {
+                    name = annotation.name();
+                }
+    
+                Object result = param.getType().getConstructor().newInstance();
+                Field[] classFields = param.getType().getDeclaredFields();
+    
+                for (Field field : classFields) {
+                    String fieldName = field.getName();
+                    ParamEquivalent fieldAnnot = field.getAnnotation(ParamEquivalent.class);
+                    if (fieldAnnot != null && !fieldAnnot.name().equals("")) {
+                        fieldName = fieldAnnot.name();
+                    }
+                    String fullName = name + "." + fieldName;
+    
+                    // Extraction depuis les parties
+                    Part part = req.getPart(fullName);
+                    if (part == null) {
+                        throw new RequiredParameterException(name + "." + fieldName);
+                    }
+    
+                    String strValue = new String(part.getInputStream().readAllBytes());
+                    Object toSet = ParametersUtil.castString(strValue, field.getType());
+                    Reflect.set(result, field.getName(), toSet, field.getType());
+                }
+                args[i++] = result;
+            } else {
+                ParamName annotation = param.getAnnotation(ParamName.class);
+                if (annotation != null && !annotation.name().equals("")) {
+                    name = annotation.name();
+                }
+    
+                // Extraction depuis les parties
+                Part part = req.getPart(name);
+                if (part == null) {
+                    throw new RequiredParameterException(name);
+                }
+    
+                String strValue = new String(part.getInputStream().readAllBytes());
+                args[i++] = ParametersUtil.castString(strValue, param.getType());
+            }
+        }
+        return args;
+    }    
+    
     /*Fonction appelee si quelqu'un entre l'URL */
     public void execute(HttpServletRequest req, HttpServletResponse resp) throws VerbNotSupportedException,Exception{
         PrintWriter out=resp.getWriter();
