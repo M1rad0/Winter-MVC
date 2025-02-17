@@ -6,6 +6,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
@@ -57,7 +59,7 @@ public class Mapping {
         setVerbmethods(set);
     }
 
-    public Object[] buildArgs(HttpServletRequest req) throws Exception {
+    public Object[] buildArgs(HttpServletRequest req) throws ValidationException,Exception {
         // Vérification si la requête est multipart
         boolean isMultipart = req.getContentType() != null && req.getContentType().toLowerCase().contains("multipart/form-data");
         
@@ -75,7 +77,9 @@ public class Mapping {
         Parameter[] parameters = toExecute.getParameters();
         Object[] args = new Object[parameters.length];
         int i = 0;
-    
+        
+        HashMap<String, ArrayList<MessageValue>> errorResult=new HashMap<>();
+
         for (Parameter param : parameters) {
             // Gestion de MySession
             if (param.getType().equals(MySession.class)) {
@@ -128,7 +132,7 @@ public class Mapping {
     
                 args[i++] = ParametersUtil.castString(strValue, param.getType());
             }
-          
+            
             /*Vérification des validations */
             List<Annotation> validations=Reflect.getAllValidationAnnot(param);
             for (Annotation annotation : validations) {
@@ -149,13 +153,22 @@ public class Mapping {
                     
                     /*Le throws Exception est set dans la fonction Validate pour l'instant*/
                     if(!validatorInstance.validate()){
-                        throw new ValidationException(validatorInstance.getErrorMessage());
+                        if(!errorResult.containsKey(name)){
+                            errorResult.put(name,new ArrayList<>());
+                        }
+
+                        errorResult.get(name).add(new MessageValue(validatorInstance.getErrorMessage(), args[i]));
                     }
                 }
             }
 
             i++;
         }
+
+        if(!errorResult.isEmpty()){
+            throw new ValidationException(errorResult);
+        }
+
         return args;
     }
     
@@ -257,8 +270,17 @@ public class Mapping {
         for (Field field : class1.getDeclaredFields()) {
             if(field.getType()==MySession.class) Reflect.set(caller, field.getName(), new MySession(req.getSession()), field.getType());
         } 
+        Object[] args=null;
 
-        Object[] args= buildArgs(req);
+        try{
+            args= buildArgs(req);
+        }catch(ValidationException e){
+            req.setAttribute("errors", e.getMessages());
+            String precURL=(String)req.getSession().getAttribute("lastReq");
+
+            req.getRequestDispatcher(precURL).forward(req, resp);
+            return;
+        }
 
         Object result=toExecute.invoke(caller, args);
 
