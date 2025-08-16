@@ -7,6 +7,8 @@ import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.List;
 
+import mg.itu.framework.annotation.validation.Validation;
+
 public class Reflect {
     @SuppressWarnings("rawtypes")
     public static Object execMeth(Object obj,String name, Class[] paramTypes, Object[] args) throws IllegalAccessException ,IllegalArgumentException, NoSuchMethodException, SecurityException, InvocationTargetException{
@@ -54,7 +56,7 @@ public class Reflect {
         Annotation[] allAnnot=param.getAnnotations();
 
         for (Annotation annotation : allAnnot) {
-            if(annotation.getClass().isAnnotationPresent(null)){
+            if(annotation.getClass().isAnnotationPresent(Validation.class)){
                 toReturn.add(annotation);
             }
         }
