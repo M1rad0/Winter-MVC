@@ -13,6 +13,7 @@ import java.util.Set;
 
 import com.google.gson.Gson;
 
+import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
@@ -334,7 +335,16 @@ public class Mapping {
 
         /*Situation normale de MVC */
         if(result instanceof String){
-            out.println(result.toString());
+            String manip=(String) result;
+            if(manip.contains("redirect")){
+                String[] splitted=manip.split(":");
+                resp.sendRedirect(splitted[1]);
+            }
+            else if(manip.contains("dispatch")){
+                String[] splitted=manip.split(":");
+                RequestDispatcher reqDisp=req.getRequestDispatcher(splitted[1]);
+                reqDisp.forward(req, resp);
+            }
         }
         else if(result instanceof ModelView){
             ModelView mv = (ModelView)result;
