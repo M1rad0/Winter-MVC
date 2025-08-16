@@ -86,7 +86,8 @@ public class Mapping {
         for (Parameter param : parameters) {
             // Gestion de MySession
             if (param.getType().equals(MySession.class)) {
-                args[i++] = new MySession(req.getSession());
+                args[i] = new MySession(req.getSession());
+                i++;
                 continue;
             }
     
@@ -121,7 +122,7 @@ public class Mapping {
                     Object toSet = ParametersUtil.castString(strValue, field.getType());
                     Reflect.set(result, field.getName(), toSet, field.getType());
                 }
-                args[i++] = result;
+                args[i] = result;
             } else {
                 ParamName annotation = param.getAnnotation(ParamName.class);
                 if (annotation != null && !annotation.name().equals("")) {
@@ -133,7 +134,7 @@ public class Mapping {
                     throw new RequiredParameterException(name);
                 }
     
-                args[i++] = ParametersUtil.castString(strValue, param.getType());
+                args[i] = ParametersUtil.castString(strValue, param.getType());
             }
             
             /*Vérification des validations */

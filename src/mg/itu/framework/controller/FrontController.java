@@ -70,12 +70,10 @@ public class FrontController extends HttpServlet{
             }
         }
         catch(VerbNotSupportedException | NotFoundException e){
-            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            resp.getWriter().write(e.getMessage());
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND, e.getMessage());
         }
         catch(Exception e){
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write(e.getMessage());
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 }
